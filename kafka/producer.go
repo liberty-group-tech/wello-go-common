@@ -2,44 +2,49 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	ckafka "github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/liberty-group-tech/wello-go-common/logging"
 )
 
-// Producer Kafka 生产者
 type Producer struct {
 	producer *ckafka.Producer
-	cfg      Config
+	cfg      *Config
 	logger   logging.Logger
 }
 
-// NewProducer 创建生产者
-func NewProducer(cfg Config, logger logging.Logger) (*Producer, error) {
-	if logger == nil {
-		logger = &logging.NoOpLogger{}
+func NewProducer(opts ...Option) (*Producer, error) {
+	cfg := NewConfig(opts...)
+
+	if len(cfg.Brokers) == 0 {
+		return nil, fmt.Errorf("kafka brokers are required")
 	}
 
 	producer, err := ckafka.NewProducer(&ckafka.ConfigMap{
-		"bootstrap.servers": strings.Join(cfg.GetBrokers(), ","),
-		"client.id":         cfg.GetClientID(),
+		"bootstrap.servers": strings.Join(cfg.Brokers, ","),
+		"client.id":         cfg.ClientID,
 	})
 	if err != nil {
-		logger.Errorf("Failed to create kafka producer: %v", err)
+		cfg.Logger.Errorf("Failed to create kafka producer: %v", err)
 		return nil, err
+	}
+
+	if err := ensureTopics(cfg, producer, nil); err != nil {
+		cfg.Logger.Errorf("Failed to ensure topics: %v", err)
+		// Note: Topic creation failure is logged but doesn't prevent producer creation
 	}
 
 	p := &Producer{
 		producer: producer,
 		cfg:      cfg,
-		logger:   logger,
+		logger:   cfg.Logger,
 	}
 
 	return p, nil
 }
 
-// SendMessage 发送消息
 func (p *Producer) SendMessage(topic string, message []byte, headers []ckafka.Header) error {
 	finalHeaders := p.mergeHeaders(headers)
 	return p.producer.Produce(&ckafka.Message{
@@ -52,7 +57,6 @@ func (p *Producer) SendMessage(topic string, message []byte, headers []ckafka.He
 	}, nil)
 }
 
-// EnsureTopics 确保主题存在
 func (p *Producer) EnsureTopics(topics []string, partitions int, replicationFactor int) error {
 	admin, err := ckafka.NewAdminClientFromProducer(p.producer)
 	if err != nil {
@@ -76,16 +80,13 @@ func (p *Producer) EnsureTopics(topics []string, partitions int, replicationFact
 	return nil
 }
 
-// Close 关闭生产者
 func (p *Producer) Close() {
 	p.producer.Close()
 }
 
 func (p *Producer) mergeHeaders(headers []ckafka.Header) []ckafka.Header {
-	defaultHeaders := []ckafka.Header{
-		{Key: "Content-Type", Value: []byte("application/json")},
-	}
-	if env := p.cfg.GetEnvironment(); env != "" {
+	defaultHeaders := p.cfg.Headers
+	if env := p.cfg.Environment; env != "" {
 		defaultHeaders = append(defaultHeaders, ckafka.Header{
 			Key:   "env",
 			Value: []byte(env),
