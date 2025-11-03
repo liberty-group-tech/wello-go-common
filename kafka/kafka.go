@@ -1,3 +1,3 @@
 package kafka
 
-// TODO: 实现 Kafka 客户端封装
+// Package kafka provides reusable Kafka components including consumer pool and producer
