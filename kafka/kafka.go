@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	defaultGroupID  = "default-group"
-	defaultClientID = "default-client"
+	defaultGroupID           = "default-group"
+	defaultClientID          = "default-client"
+	defaultPartitions        = 6
+	defaultReplicationFactor = 3
 )
 
 type Config struct {
@@ -88,12 +90,12 @@ func WithLogger(logger logging.Logger) Option {
 	}
 }
 
-func NewConfig(opts ...Option) *Config {
+func newConfig(opts ...Option) *Config {
 	options := &configOptions{
 		clientID:          defaultClientID,
 		groupID:           defaultGroupID,
-		partitions:        3,
-		replicationFactor: 1,
+		partitions:        defaultPartitions,
+		replicationFactor: defaultReplicationFactor,
 		environment:       "",
 		headers: []ckafka.Header{
 			{Key: "Content-Type", Value: []byte("application/json")},

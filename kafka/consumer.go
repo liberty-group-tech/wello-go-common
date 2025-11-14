@@ -33,7 +33,7 @@ type ConsumerManager struct {
 
 func NewConsumerManager(opts ...Option) *ConsumerManager {
 
-	cfg := NewConfig(opts...)
+	cfg := newConfig(opts...)
 
 	return &ConsumerManager{
 		cfg:    cfg,

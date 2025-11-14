@@ -16,7 +16,7 @@ type Producer struct {
 }
 
 func NewProducer(opts ...Option) (*Producer, error) {
-	cfg := NewConfig(opts...)
+	cfg := newConfig(opts...)
 
 	if len(cfg.Brokers) == 0 {
 		return nil, fmt.Errorf("kafka brokers are required")
